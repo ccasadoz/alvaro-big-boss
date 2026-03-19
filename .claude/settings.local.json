@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.nike.cl)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(find 'C:/Users/g/Prueba Golf' -type f -not -path */.git/* -not -path */node_modules/* -not -path */.claude/*)",
+      "Bash(where node:*)",
+      "Bash(where npm:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"from db import init_db; init_db\\(\\); print\\(''DB OK''\\)\")",
+      "Bash(curl -s http://localhost:8001/products)",
+      "Bash(npx vite:*)"
+    ]
+  }
+}
