@@ -151,7 +151,7 @@ def create_preference(data: CreatePreference):
         body = result.get("response", {})
 
         return {
-            "init_point": body.get("sandbox_init_point") or body.get("init_point"),
+            "init_point": body.get("init_point") or body.get("sandbox_init_point"),
             "order_id": order_id,
             "total": total
         }
