@@ -23,7 +23,7 @@ app.add_middleware(
 
 # MercadoPago
 sdk = mercadopago.SDK(os.getenv("MP_ACCESS_TOKEN", ""))
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://alvarobigboss.onrender.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 # Simple token store
