@@ -137,14 +137,16 @@ def create_preference(data: CreatePreference):
         preference = {
             "items": mp_items,
             "payer": {"email": data.customer_email},
-            "back_urls": {
+            "external_reference": order_id,
+        }
+        # Only add back_urls if FRONTEND_URL is not localhost (MP rejects localhost)
+        if "localhost" not in FRONTEND_URL and "127.0.0.1" not in FRONTEND_URL:
+            preference["back_urls"] = {
                 "success": f"{FRONTEND_URL}?status=approved&order_id={order_id}",
                 "failure": f"{FRONTEND_URL}?status=rejected&order_id={order_id}",
                 "pending": f"{FRONTEND_URL}?status=pending&order_id={order_id}",
-            },
-            "auto_return": "approved",
-            "external_reference": order_id,
-        }
+            }
+            preference["auto_return"] = "approved"
         result = sdk.preference().create(preference)
         body = result.get("response", {})
 
