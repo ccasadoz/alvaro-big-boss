@@ -34,8 +34,15 @@ def default_stock_by_size(category, tags, total_stock):
 def init_db():
     conn = get_db()
 
-    # Check if stock_by_size column exists
+    # Check if columns exist
     cols = [row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()]
+
+    if "original_price" not in cols:
+        try:
+            conn.execute("ALTER TABLE products ADD COLUMN original_price INTEGER DEFAULT 0")
+            conn.commit()
+        except:
+            pass
 
     if "stock_by_size" not in cols:
         conn.executescript("""

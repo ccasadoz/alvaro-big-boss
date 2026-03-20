@@ -320,6 +320,7 @@ export default function App() {
       {page === 'giftcard' && <GiftCardPage navigate={navigate} />}
       {page === 'ayuda' && <AyudaPage navigate={navigate} />}
       {page === 'admin' && <AdminPanel />}
+      {page === 'tallas' && <SizeGuidePage navigate={navigate} />}
 
       {/* ===== FOOTER ===== */}
       {page !== 'checkout' && page !== 'result' && <Footer navigate={navigate} setSelectedCategory={setSelectedCategory} setPage={setPage} />}
@@ -494,9 +495,11 @@ function ProductCard({ product, addToCart, toggleFav, isFav, onClick }) {
           className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-md hover:scale-110 transition cursor-pointer">
           <Heart size={16} fill={isFav ? '#c41e3a' : 'none'} color={isFav ? '#c41e3a' : '#111'} />
         </button>
-        {product.stock < 5 && product.stock > 0 && (
+        {product.original_price && product.original_price > product.price ? (
+          <span className="absolute top-4 left-4 bg-[#c41e3a] text-white text-[11px] font-semibold px-3 py-1 rounded-full">-{Math.round((1 - product.price / product.original_price) * 100)}%</span>
+        ) : product.stock < 5 && product.stock > 0 ? (
           <span className="absolute top-4 left-4 bg-[#c41e3a] text-white text-[11px] font-semibold px-3 py-1 rounded-full">Últimas unidades</span>
-        )}
+        ) : null}
         {product.stock === 0 && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-white text-black text-sm font-bold px-5 py-1.5 rounded-full">Agotado</span>
@@ -510,7 +513,15 @@ function ProductCard({ product, addToCart, toggleFav, isFav, onClick }) {
       </div>
       <p className="font-semibold text-[15px] line-clamp-2 cursor-pointer leading-snug hover:text-gray-600 transition" onClick={onClick}>{product.name}</p>
       <p className="text-xs text-gray-400 mt-1.5">{product.category}</p>
-      <p className="font-bold text-base mt-2">{fmt(product.price)}</p>
+      {product.original_price && product.original_price > product.price ? (
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-sm text-gray-400 line-through">{fmt(product.original_price)}</span>
+          <span className="font-bold text-base text-[#c41e3a]">{fmt(product.price)}</span>
+          <span className="text-[11px] bg-[#c41e3a] text-white px-1.5 py-0.5 rounded font-bold">-{Math.round((1 - product.price / product.original_price) * 100)}%</span>
+        </div>
+      ) : (
+        <p className="font-bold text-base mt-2">{fmt(product.price)}</p>
+      )}
     </div>
   )
 }
@@ -610,7 +621,15 @@ function ProductPage({ product, addToCart, toggleFav, favorites, products, setSe
         <div>
           <p className="text-sm text-gray-500 mb-1">{product.category}</p>
           <h1 className="font-oswald text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
-          <p className="text-2xl font-medium mb-4">{fmt(product.price)}</p>
+          {product.original_price && product.original_price > product.price ? (
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-xl text-gray-400 line-through">{fmt(product.original_price)}</span>
+              <span className="text-2xl font-bold text-[#c41e3a]">{fmt(product.price)}</span>
+              <span className="text-sm bg-[#c41e3a] text-white px-2 py-0.5 rounded-full font-bold">-{Math.round((1 - product.price / product.original_price) * 100)}%</span>
+            </div>
+          ) : (
+            <p className="text-2xl font-medium mb-4">{fmt(product.price)}</p>
+          )}
 
           {/* Stock */}
           {sizeStock > 0 ? (
@@ -1190,53 +1209,134 @@ function ResultPage({ result, navigate }) {
 function GiftCardPage({ navigate }) {
   const [amount, setAmount] = useState(25000)
   const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipientName, setRecipientName] = useState('')
+  const [senderName, setSenderName] = useState('')
   const [message, setMessage] = useState('')
-  const amounts = [15000, 25000, 50000, 100000]
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(null)
+  const [error, setError] = useState('')
+  const amounts = [15000, 25000, 50000, 100000, 200000]
+
+  const handleBuy = async () => {
+    if (!recipientEmail) return setError('Ingresa el email del destinatario')
+    if (!senderName) return setError('Ingresa tu nombre')
+    setLoading(true)
+    setError('')
+    try {
+      const code = 'ABB-GC-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+      const r = await fetch(`${API_BASE_URL}/create-preference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ id: 0, name: `Gift Card ${fmt(amount)}`, qty: 1, size: 'UNICA' }],
+          customer_email: recipientEmail,
+          delivery_method: 'pickup',
+          shipping_address: `Gift Card para ${recipientName || recipientEmail} de ${senderName}. Mensaje: ${message}. Código: ${code}`
+        })
+      })
+      const data = await r.json()
+      if (data.init_point) {
+        const giftCards = JSON.parse(localStorage.getItem('abb_giftcards') || '[]')
+        giftCards.push({ code, amount, recipientEmail, recipientName, senderName, message, date: new Date().toISOString(), status: 'pending', orderId: data.order_id })
+        localStorage.setItem('abb_giftcards', JSON.stringify(giftCards))
+        window.location.href = data.init_point
+      } else {
+        setError(data.detail || 'Error al procesar el pago')
+        setLoading(false)
+      }
+    } catch {
+      setError('No se pudo conectar con el servidor')
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
+    <div className="max-w-4xl mx-auto px-4 py-12">
       <button onClick={() => navigate('home')} className="text-sm text-gray-500 hover:text-black mb-6 flex items-center gap-1 cursor-pointer">
         <ChevronLeft size={16} /> Volver
       </button>
       <h1 className="font-oswald text-4xl font-bold mb-2">Gift Card</h1>
       <p className="text-gray-500 mb-8">Regala estilo Alvaro Big Boss a quien tú quieras</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-gradient-to-br from-black to-gray-800 rounded-2xl p-8 text-white aspect-video flex flex-col justify-between">
-          <div className="font-oswald text-xl font-bold tracking-wider">ALVARO <span className="text-[#c41e3a]">BIG BOSS</span></div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">GIFT CARD</p>
-            <p className="text-3xl font-bold">{fmt(amount)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        {/* Card preview */}
+        <div>
+          <div className="bg-gradient-to-br from-black via-gray-900 to-gray-800 rounded-3xl p-8 text-white aspect-[16/10] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '30px 30px'}} />
+            <div className="relative z-10">
+              <div className="font-oswald text-xl font-bold tracking-wider">ALVARO <span className="text-[#c41e3a]">BIG BOSS</span></div>
+              <p className="text-[10px] text-gray-400 tracking-[0.3em] mt-1">GIFT CARD</p>
+            </div>
+            <div className="relative z-10">
+              {recipientName && <p className="text-sm text-gray-300 mb-1">Para: {recipientName}</p>}
+              <p className="text-4xl font-bold">{fmt(amount)}</p>
+              {senderName && <p className="text-xs text-gray-400 mt-2">De: {senderName}</p>}
+            </div>
           </div>
+          {message && (
+            <div className="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <p className="text-xs text-gray-400 mb-1">Mensaje:</p>
+              <p className="text-sm italic text-gray-600">"{message}"</p>
+            </div>
+          )}
         </div>
 
-        <div className="space-y-4">
+        {/* Form */}
+        <div className="space-y-5">
           <div>
             <label className="text-sm font-medium block mb-2">Monto</label>
             <div className="flex gap-2 flex-wrap">
               {amounts.map(a => (
                 <button key={a} onClick={() => setAmount(a)}
-                  className={`px-4 py-2 rounded-full text-sm border cursor-pointer ${amount === a ? 'bg-black text-white border-black' : 'border-gray-300 hover:border-black'}`}>
+                  className={`px-5 py-2.5 rounded-full text-sm font-medium border cursor-pointer transition-all ${amount === a ? 'bg-black text-white border-black scale-105' : 'border-gray-300 hover:border-black'}`}>
                   {fmt(a)}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Email del destinatario</label>
-            <input type="email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
-              placeholder="amigo@email.com"
-              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-black" />
+            <label className="text-sm font-medium block mb-1">Tu nombre</label>
+            <input value={senderName} onChange={e => setSenderName(e.target.value)}
+              placeholder="Tu nombre"
+              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-black transition" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">Nombre del destinatario</label>
+              <input value={recipientName} onChange={e => setRecipientName(e.target.value)}
+                placeholder="Nombre"
+                className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-black transition" />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Email del destinatario</label>
+              <input type="email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
+                placeholder="email@ejemplo.com"
+                className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-black transition" />
+            </div>
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Mensaje (opcional)</label>
+            <label className="text-sm font-medium block mb-1">Mensaje personalizado (opcional)</label>
             <textarea value={message} onChange={e => setMessage(e.target.value)}
-              placeholder="¡Feliz cumpleaños!"
-              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-black h-24 resize-none" />
+              placeholder="¡Feliz cumpleaños! Elige lo que más te guste..."
+              className="w-full border rounded-xl px-4 py-3 text-sm outline-none focus:border-black h-24 resize-none transition" />
           </div>
-          <button className="w-full bg-black text-white py-3 rounded-full font-medium hover:bg-gray-800 transition cursor-pointer">
-            Comprar Gift Card {fmt(amount)}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+              <AlertCircle size={16} className="text-red-500" />
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <button onClick={handleBuy} disabled={loading}
+            className="w-full bg-black text-white py-4 rounded-full font-bold text-base hover:bg-gray-800 transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading ? <span className="animate-spin">&#9203;</span> : <CreditCard size={20} />}
+            {loading ? 'Procesando...' : `Comprar Gift Card ${fmt(amount)}`}
           </button>
+
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+            <ShieldCheck size={14} className="text-green-500" /> Pago seguro con MercadoPago
+          </div>
         </div>
       </div>
     </div>
@@ -1311,6 +1411,207 @@ function AyudaPage({ navigate }) {
 
 
 /* ══════════════════════════════════════════════
+   SIZE GUIDE PAGE
+   ══════════════════════════════════════════════ */
+function SizeGuidePage({ navigate }) {
+  const [tab, setTab] = useState('zapatillas')
+
+  const shoeSizes = [
+    { cl: '36', us: '4', uk: '3.5', cm: '22.5' },
+    { cl: '37', us: '5', uk: '4.5', cm: '23.5' },
+    { cl: '38', us: '6', uk: '5.5', cm: '24.5' },
+    { cl: '39', us: '7', uk: '6', cm: '25' },
+    { cl: '40', us: '8', uk: '7', cm: '26' },
+    { cl: '41', us: '9', uk: '8', cm: '27' },
+    { cl: '42', us: '10', uk: '9', cm: '28' },
+    { cl: '43', us: '11', uk: '10', cm: '29' },
+    { cl: '44', us: '12', uk: '11', cm: '30' },
+    { cl: '45', us: '13', uk: '12', cm: '31' },
+    { cl: '46', us: '14', uk: '13', cm: '32' },
+  ]
+
+  const kidsShoeSizes = [
+    { cl: '28', us: '11C', uk: '10.5', cm: '17' },
+    { cl: '29', us: '12C', uk: '11.5', cm: '18' },
+    { cl: '30', us: '13C', uk: '12.5', cm: '18.5' },
+    { cl: '31', us: '1Y', uk: '13', cm: '19.5' },
+    { cl: '32', us: '1.5Y', uk: '13.5', cm: '20' },
+    { cl: '33', us: '2Y', uk: '1', cm: '20.5' },
+    { cl: '34', us: '2.5Y', uk: '1.5', cm: '21.5' },
+    { cl: '35', us: '3Y', uk: '2.5', cm: '22' },
+  ]
+
+  const clothingSizes = [
+    { size: 'XS', chest: '82-86', waist: '66-70', hip: '88-92' },
+    { size: 'S', chest: '87-91', waist: '71-75', hip: '93-97' },
+    { size: 'M', chest: '92-96', waist: '76-81', hip: '98-102' },
+    { size: 'L', chest: '97-102', waist: '82-87', hip: '103-107' },
+    { size: 'XL', chest: '103-108', waist: '88-93', hip: '108-113' },
+    { size: 'XXL', chest: '109-114', waist: '94-99', hip: '114-119' },
+  ]
+
+  const kidsClothingSizes = [
+    { size: '4', age: '3-4 años', height: '98-104', chest: '54-56' },
+    { size: '6', age: '5-6 años', height: '105-116', chest: '57-60' },
+    { size: '8', age: '7-8 años', height: '117-128', chest: '61-64' },
+    { size: '10', age: '9-10 años', height: '129-140', chest: '65-68' },
+    { size: '12', age: '11-12 años', height: '141-152', chest: '69-72' },
+    { size: '14', age: '13-14 años', height: '153-164', chest: '73-76' },
+  ]
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-12">
+      <button onClick={() => navigate('home')} className="text-sm text-gray-500 hover:text-black mb-6 flex items-center gap-1 cursor-pointer">
+        <ChevronLeft size={16} /> Volver
+      </button>
+      <h1 className="font-oswald text-4xl font-bold mb-2">Guía de Tallas</h1>
+      <p className="text-gray-500 mb-8">Encuentra tu talla perfecta con nuestras tablas de referencia</p>
+
+      {/* How to measure */}
+      <div className="bg-gray-50 rounded-2xl p-6 mb-8">
+        <h3 className="font-bold text-sm mb-3">¿Cómo medir correctamente?</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+          <div className="flex gap-3">
+            <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">1</span>
+            <p><strong>Zapatillas:</strong> Mide tu pie desde el talón hasta la punta del dedo más largo. Añade 0.5cm para mayor comodidad.</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
+            <p><strong>Pecho:</strong> Mide alrededor de la parte más ancha de tu pecho, manteniendo la cinta horizontal.</p>
+          </div>
+          <div className="flex gap-3">
+            <span className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
+            <p><strong>Cintura:</strong> Mide alrededor de la parte más estrecha de tu cintura, a la altura del ombligo.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {[
+          { id: 'zapatillas', label: 'Zapatillas Adulto' },
+          { id: 'zapatillas-ninos', label: 'Zapatillas Niños' },
+          { id: 'ropa', label: 'Ropa Adulto' },
+          { id: 'ropa-ninos', label: 'Ropa Niños' },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`px-5 py-2 rounded-full text-sm font-medium border cursor-pointer transition-all ${tab === t.id ? 'bg-black text-white border-black' : 'border-gray-300 hover:border-black'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tables */}
+      <div className="overflow-x-auto">
+        {tab === 'zapatillas' && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-black text-white">
+                <th className="px-4 py-3 text-left rounded-tl-xl">Talla CL</th>
+                <th className="px-4 py-3 text-left">Talla US</th>
+                <th className="px-4 py-3 text-left">Talla UK</th>
+                <th className="px-4 py-3 text-left rounded-tr-xl">Largo pie (cm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shoeSizes.map((s, i) => (
+                <tr key={s.cl} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-4 py-3 font-bold">{s.cl}</td>
+                  <td className="px-4 py-3">{s.us}</td>
+                  <td className="px-4 py-3">{s.uk}</td>
+                  <td className="px-4 py-3">{s.cm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {tab === 'zapatillas-ninos' && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-black text-white">
+                <th className="px-4 py-3 text-left rounded-tl-xl">Talla CL</th>
+                <th className="px-4 py-3 text-left">Talla US</th>
+                <th className="px-4 py-3 text-left">Talla UK</th>
+                <th className="px-4 py-3 text-left rounded-tr-xl">Largo pie (cm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kidsShoeSizes.map((s, i) => (
+                <tr key={s.cl} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-4 py-3 font-bold">{s.cl}</td>
+                  <td className="px-4 py-3">{s.us}</td>
+                  <td className="px-4 py-3">{s.uk}</td>
+                  <td className="px-4 py-3">{s.cm}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {tab === 'ropa' && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-black text-white">
+                <th className="px-4 py-3 text-left rounded-tl-xl">Talla</th>
+                <th className="px-4 py-3 text-left">Pecho (cm)</th>
+                <th className="px-4 py-3 text-left">Cintura (cm)</th>
+                <th className="px-4 py-3 text-left rounded-tr-xl">Cadera (cm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clothingSizes.map((s, i) => (
+                <tr key={s.size} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-4 py-3 font-bold">{s.size}</td>
+                  <td className="px-4 py-3">{s.chest}</td>
+                  <td className="px-4 py-3">{s.waist}</td>
+                  <td className="px-4 py-3">{s.hip}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {tab === 'ropa-ninos' && (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-black text-white">
+                <th className="px-4 py-3 text-left rounded-tl-xl">Talla</th>
+                <th className="px-4 py-3 text-left">Edad</th>
+                <th className="px-4 py-3 text-left">Altura (cm)</th>
+                <th className="px-4 py-3 text-left rounded-tr-xl">Pecho (cm)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kidsClothingSizes.map((s, i) => (
+                <tr key={s.size} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-4 py-3 font-bold">{s.size}</td>
+                  <td className="px-4 py-3">{s.age}</td>
+                  <td className="px-4 py-3">{s.height}</td>
+                  <td className="px-4 py-3">{s.chest}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Tips */}
+      <div className="mt-8 bg-gray-50 rounded-2xl p-6">
+        <h3 className="font-bold text-sm mb-3">Consejos</h3>
+        <ul className="space-y-2 text-sm text-gray-600">
+          <li className="flex items-start gap-2"><Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" /> Si estás entre dos tallas, te recomendamos elegir la talla mayor.</li>
+          <li className="flex items-start gap-2"><Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" /> Las tallas pueden variar ligeramente según el modelo y tipo de calce.</li>
+          <li className="flex items-start gap-2"><Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" /> Para zapatillas de running, recomendamos media talla más que tu talla habitual.</li>
+          <li className="flex items-start gap-2"><Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" /> Recuerda que tienes 30 días para cambios de talla sin costo.</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+
+/* ══════════════════════════════════════════════
    ADMIN PANEL
    ══════════════════════════════════════════════ */
 function AdminPanel() {
@@ -1322,6 +1623,7 @@ function AdminPanel() {
   const [orders, setOrders] = useState([])
   const [expandedProduct, setExpandedProduct] = useState(null)
   const [editingSizes, setEditingSizes] = useState({})
+  const [editingDiscount, setEditingDiscount] = useState({})
 
   const login = async () => {
     try {
@@ -1437,6 +1739,70 @@ function AdminPanel() {
                 {/* Expanded: stock by size */}
                 {isExpanded && (
                   <div className="border-t bg-gray-50 p-4">
+                    {/* Price & Discount */}
+                    <div className="mb-4 pb-4 border-b border-gray-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Precio y Descuento</p>
+                        {!editingDiscount[p.id] ? (
+                          <button onClick={(e) => { e.stopPropagation(); setEditingDiscount(prev => ({...prev, [p.id]: { price: p.price, original_price: p.original_price || p.price }})) }}
+                            className="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full cursor-pointer hover:bg-gray-300 flex items-center gap-1">
+                            <Edit3 size={12} /> Editar precio
+                          </button>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); setEditingDiscount(prev => { const n = {...prev}; delete n[p.id]; return n }) }}
+                              className="text-xs border px-3 py-1 rounded-full cursor-pointer hover:bg-white">Cancelar</button>
+                            <button onClick={async (e) => {
+                              e.stopPropagation()
+                              const d = editingDiscount[p.id]
+                              await fetch(`${API_BASE_URL}/admin/products/${p.id}`, {
+                                method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ ...p, price: parseInt(d.price), original_price: parseInt(d.original_price) || 0, stock_by_size: p.stock_by_size || {} })
+                              })
+                              loadData()
+                              setEditingDiscount(prev => { const n = {...prev}; delete n[p.id]; return n })
+                            }}
+                              className="text-xs bg-green-600 text-white px-3 py-1 rounded-full cursor-pointer hover:bg-green-700 flex items-center gap-1">
+                              <Save size={12} /> Guardar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {editingDiscount[p.id] ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-gray-400 block mb-1">Precio original</label>
+                            <input type="number" value={editingDiscount[p.id].original_price}
+                              onChange={e => setEditingDiscount(prev => ({...prev, [p.id]: {...prev[p.id], original_price: e.target.value}}))}
+                              onClick={e => e.stopPropagation()}
+                              className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-black" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 block mb-1">Precio con descuento</label>
+                            <input type="number" value={editingDiscount[p.id].price}
+                              onChange={e => setEditingDiscount(prev => ({...prev, [p.id]: {...prev[p.id], price: e.target.value}}))}
+                              onClick={e => e.stopPropagation()}
+                              className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-black" />
+                          </div>
+                          {editingDiscount[p.id].original_price > editingDiscount[p.id].price && editingDiscount[p.id].price > 0 && (
+                            <div className="col-span-2 bg-red-50 rounded-lg p-2 text-center">
+                              <span className="text-sm font-bold text-[#c41e3a]">-{Math.round((1 - editingDiscount[p.id].price / editingDiscount[p.id].original_price) * 100)}% descuento</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold">{fmt(p.price)}</span>
+                          {p.original_price && p.original_price > p.price && (
+                            <>
+                              <span className="text-xs text-gray-400 line-through">{fmt(p.original_price)}</span>
+                              <span className="text-xs bg-[#c41e3a] text-white px-2 py-0.5 rounded-full font-bold">-{Math.round((1 - p.price / p.original_price) * 100)}%</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-between items-center mb-3">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock por talla</p>
                       {!isEditing ? (
@@ -1557,7 +1923,7 @@ function Footer({ navigate, setSelectedCategory, setPage }) {
             <ul className="space-y-2.5 text-sm text-gray-400">
               <li><button onClick={() => navigate('ayuda')} className="hover:text-white cursor-pointer transition">Centro de ayuda</button></li>
               <li><button className="hover:text-white cursor-pointer transition">Bases legales</button></li>
-              <li><button className="hover:text-white cursor-pointer transition">Guía de tallas</button></li>
+              <li><button onClick={() => navigate('tallas')} className="hover:text-white cursor-pointer transition">Guía de tallas</button></li>
             </ul>
           </div>
           <div>
@@ -1592,7 +1958,7 @@ function Footer({ navigate, setSelectedCategory, setPage }) {
       <div className="bg-[#111] border-t border-gray-800 flex flex-col md:flex-row justify-between items-center px-6 md:px-12 py-5 text-xs text-gray-500 gap-2">
         <span>© 2026 Alvaro Big Boss Chile SpA. Todos los derechos reservados</span>
         <div className="flex gap-4 flex-wrap">
-          <button className="hover:text-white cursor-pointer transition">Guías de Tallas</button>
+          <button onClick={() => navigate('tallas')} className="hover:text-white cursor-pointer transition">Guías de Tallas</button>
           <button className="hover:text-white cursor-pointer transition">Condiciones de venta</button>
           <button className="hover:text-white cursor-pointer transition">Condiciones de uso</button>
           <button className="hover:text-white cursor-pointer transition">Política de privacidad</button>

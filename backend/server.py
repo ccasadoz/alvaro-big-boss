@@ -56,6 +56,7 @@ class ProductCreate(BaseModel):
     specs: list = []
     tags: list = []
     stock_by_size: dict = {}
+    original_price: int = 0
 
 class StockUpdate(BaseModel):
     stock: int
@@ -77,6 +78,7 @@ def parse_product(r):
     d["specs"] = json.loads(r["specs"])
     d["tags"] = json.loads(r["tags"])
     d["stock_by_size"] = json.loads(r["stock_by_size"]) if r["stock_by_size"] else {}
+    d["original_price"] = r["original_price"] if "original_price" in d else 0
     return d
 
 # ─── Public endpoints ───
@@ -246,9 +248,9 @@ def admin_create_product(product: ProductCreate, auth: bool = Depends(verify_adm
     stock_by_size = product.stock_by_size if product.stock_by_size else {}
     total_stock = sum(stock_by_size.values()) if stock_by_size else product.stock
     cur = conn.execute(
-        "INSERT INTO products (category, name, price, stock, img, specs, tags, stock_by_size) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT INTO products (category, name, price, stock, img, specs, tags, stock_by_size, original_price) VALUES (?,?,?,?,?,?,?,?,?)",
         (product.category, product.name, product.price, total_stock, product.img,
-         json.dumps(product.specs), json.dumps(product.tags), json.dumps(stock_by_size))
+         json.dumps(product.specs), json.dumps(product.tags), json.dumps(stock_by_size), product.original_price)
     )
     conn.commit()
     pid = cur.lastrowid
@@ -261,9 +263,9 @@ def admin_update_product(pid: int, product: ProductCreate, auth: bool = Depends(
     stock_by_size = product.stock_by_size if product.stock_by_size else {}
     total_stock = sum(stock_by_size.values()) if stock_by_size else product.stock
     conn.execute(
-        "UPDATE products SET category=?, name=?, price=?, stock=?, img=?, specs=?, tags=?, stock_by_size=? WHERE id=?",
+        "UPDATE products SET category=?, name=?, price=?, stock=?, img=?, specs=?, tags=?, stock_by_size=?, original_price=? WHERE id=?",
         (product.category, product.name, product.price, total_stock, product.img,
-         json.dumps(product.specs), json.dumps(product.tags), json.dumps(stock_by_size), pid)
+         json.dumps(product.specs), json.dumps(product.tags), json.dumps(stock_by_size), product.original_price, pid)
     )
     conn.commit()
     conn.close()
