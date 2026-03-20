@@ -9,30 +9,95 @@ def get_db():
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
+SHOE_SIZES = ["36","37","38","39","40","41","42","43","44","45","46"]
+KIDS_SHOE_SIZES = ["28","29","30","31","32","33","34","35"]
+CLOTHING_SIZES = ["XS","S","M","L","XL","XXL"]
+KIDS_CLOTHING_SIZES = ["4","6","8","10","12","14"]
+
+def default_stock_by_size(category, tags, total_stock):
+    """Distribute total stock across sizes based on category."""
+    is_kids = "Niños" in (tags if isinstance(tags, list) else json.loads(tags or '[]'))
+    if category == "Zapatillas":
+        sizes = KIDS_SHOE_SIZES if is_kids else SHOE_SIZES
+    elif category == "Accesorios":
+        return json.dumps({"UNICA": total_stock})
+    else:
+        sizes = KIDS_CLOTHING_SIZES if is_kids else CLOTHING_SIZES
+
+    per_size = total_stock // len(sizes)
+    remainder = total_stock % len(sizes)
+    stock_map = {}
+    for i, s in enumerate(sizes):
+        stock_map[s] = per_size + (1 if i < remainder else 0)
+    return json.dumps(stock_map)
+
 def init_db():
     conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category TEXT NOT NULL,
-            name TEXT NOT NULL,
-            price INTEGER NOT NULL,
-            stock INTEGER NOT NULL DEFAULT 0,
-            img TEXT NOT NULL,
-            specs TEXT DEFAULT '[]',
-            tags TEXT DEFAULT '[]'
-        );
-        CREATE TABLE IF NOT EXISTS orders (
-            id TEXT PRIMARY KEY,
-            items TEXT NOT NULL,
-            total INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending',
-            customer_email TEXT,
-            shipping_address TEXT,
-            delivery_method TEXT DEFAULT 'shipping',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
+
+    # Check if stock_by_size column exists
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()]
+
+    if "stock_by_size" not in cols:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                name TEXT NOT NULL,
+                price INTEGER NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                img TEXT NOT NULL,
+                specs TEXT DEFAULT '[]',
+                tags TEXT DEFAULT '[]'
+            );
+            CREATE TABLE IF NOT EXISTS orders (
+                id TEXT PRIMARY KEY,
+                items TEXT NOT NULL,
+                total INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                customer_email TEXT,
+                shipping_address TEXT,
+                delivery_method TEXT DEFAULT 'shipping',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+        # Add stock_by_size column
+        try:
+            conn.execute("ALTER TABLE products ADD COLUMN stock_by_size TEXT DEFAULT '{}'")
+            conn.commit()
+        except:
+            pass
+
+        # Migrate existing products
+        rows = conn.execute("SELECT id, category, stock, tags FROM products").fetchall()
+        for row in rows:
+            stock_json = default_stock_by_size(row["category"], row["tags"], row["stock"])
+            conn.execute("UPDATE products SET stock_by_size = ? WHERE id = ?", (stock_json, row["id"]))
+        conn.commit()
+    else:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS products (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                name TEXT NOT NULL,
+                price INTEGER NOT NULL,
+                stock INTEGER NOT NULL DEFAULT 0,
+                img TEXT NOT NULL,
+                specs TEXT DEFAULT '[]',
+                tags TEXT DEFAULT '[]',
+                stock_by_size TEXT DEFAULT '{}'
+            );
+            CREATE TABLE IF NOT EXISTS orders (
+                id TEXT PRIMARY KEY,
+                items TEXT NOT NULL,
+                total INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                customer_email TEXT,
+                shipping_address TEXT,
+                delivery_method TEXT DEFAULT 'shipping',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
     # Seed products if empty
     count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
@@ -55,10 +120,13 @@ def init_db():
             ("Shorts", "Boss Kids Short", 19990, 30, "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=600&h=600&fit=crop", '["Cintura elástica","Secado rápido","Colores vibrantes"]', '["Niños"]'),
             ("Zapatillas", "Boss Trail Beast", 139990, 7, "https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&h=600&fit=crop", '["Gore-Tex waterproof","Suela Vibram","Protección de roca"]', '["Hombre","Deportes"]'),
         ]
-        conn.executemany(
-            "INSERT INTO products (category, name, price, stock, img, specs, tags) VALUES (?,?,?,?,?,?,?)",
-            products
-        )
+        for p in products:
+            cat, name, price, stock, img, specs, tags = p
+            stock_json = default_stock_by_size(cat, tags, stock)
+            conn.execute(
+                "INSERT INTO products (category, name, price, stock, img, specs, tags, stock_by_size) VALUES (?,?,?,?,?,?,?,?)",
+                (cat, name, price, stock, img, specs, tags, stock_json)
+            )
         conn.commit()
     conn.close()
 

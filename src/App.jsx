@@ -11,23 +11,42 @@ import {
 const fmt = (n) => '$' + Number(n).toLocaleString('es-CL')
 const CATEGORIES = ['Lo nuevo', 'Hombre', 'Mujer', 'Niños', 'Deportes', 'Ofertas', 'Exclusivos']
 
+const SHOE_SIZES = ['36','37','38','39','40','41','42','43','44','45','46']
+const KIDS_SHOE_SIZES = ['28','29','30','31','32','33','34','35']
+const CLOTHING_SIZES = ['XS','S','M','L','XL','XXL']
+const KIDS_CLOTHING_SIZES = ['4','6','8','10','12','14']
+
+const getSizesForProduct = (product) => {
+  const isKids = product.tags?.includes('Niños')
+  if (product.category === 'Zapatillas') return isKids ? KIDS_SHOE_SIZES : SHOE_SIZES
+  if (product.category === 'Accesorios') return ['UNICA']
+  return isKids ? KIDS_CLOTHING_SIZES : CLOTHING_SIZES
+}
+
+const getSizeStock = (product, size) => {
+  if (product.stock_by_size && Object.keys(product.stock_by_size).length > 0) {
+    return product.stock_by_size[size] || 0
+  }
+  return product.stock
+}
+
 const FALLBACK_PRODUCTS = [
-  { id: 1, category: 'Zapatillas', name: 'Boss Runner X1', price: 89990, stock: 15, img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop', specs: ['Suela de goma premium', 'Mesh transpirable', 'Amortiguación responsive'], tags: ['Hombre', 'Deportes', 'Lo nuevo'] },
-  { id: 2, category: 'Zapatillas', name: 'Boss Air Force', price: 109990, stock: 12, img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&h=600&fit=crop', specs: ['Cuero sintético', 'Suela Air visible', 'Clásico reinventado'], tags: ['Hombre', 'Mujer', 'Exclusivos'] },
-  { id: 3, category: 'Poleras', name: 'Boss Classic Tee', price: 34990, stock: 30, img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop', specs: ['Algodón 100%', 'Fit regular', 'Logo bordado'], tags: ['Hombre', 'Lo nuevo'] },
-  { id: 4, category: 'Zapatillas', name: 'Boss Retro High', price: 119990, stock: 8, img: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&h=600&fit=crop', specs: ['Caña alta acolchada', 'Suela vulcanizada', 'Edición limitada'], tags: ['Mujer', 'Exclusivos'] },
-  { id: 5, category: 'Zapatillas', name: 'Boss Speed Lite', price: 99990, stock: 20, img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop', specs: ['Ultra liviana 220g', 'Placa de carbono', 'Para competición'], tags: ['Hombre', 'Mujer', 'Deportes'] },
-  { id: 6, category: 'Polerones', name: 'Boss Oversize Hoodie', price: 59990, stock: 25, img: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&h=600&fit=crop', specs: ['Algodón fleece 350g', 'Capucha doble', 'Bolsillo canguro'], tags: ['Hombre', 'Mujer', 'Lo nuevo'] },
-  { id: 7, category: 'Zapatillas', name: 'Boss Dunk Low', price: 129990, stock: 6, img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=600&fit=crop', specs: ['Cuero premium', 'Colorway exclusivo', 'Edición Chile'], tags: ['Hombre', 'Mujer', 'Exclusivos', 'Lo nuevo'] },
-  { id: 8, category: 'Poleras', name: 'Boss Dry-Fit Pro', price: 44990, stock: 18, img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&h=600&fit=crop', specs: ['Tecnología Dry-Fit', 'Anti-transpirante', 'UV Protection 50+'], tags: ['Hombre', 'Deportes'] },
-  { id: 9, category: 'Shorts', name: 'Boss Flex Short', price: 39990, stock: 22, img: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=600&h=600&fit=crop', specs: ['Tela stretch 4 vías', 'Bolsillos con cierre', 'Liner integrado'], tags: ['Hombre', 'Deportes'] },
-  { id: 10, category: 'Zapatillas', name: 'Boss Pink Cloud', price: 94990, stock: 14, img: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=600&h=600&fit=crop', specs: ['Foam ultra suave', 'Diseño femenino', 'Slip-on easy'], tags: ['Mujer', 'Lo nuevo'] },
-  { id: 11, category: 'Polerones', name: 'Boss Cropped Hoodie', price: 49990, stock: 16, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=600&fit=crop', specs: ['Corte cropped', 'French terry', 'Colores pasteles'], tags: ['Mujer', 'Lo nuevo'] },
-  { id: 12, category: 'Accesorios', name: 'Boss Mochila Urban', price: 64990, stock: 10, img: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop', specs: ['30L capacidad', 'Compartimiento laptop', 'Tela impermeable'], tags: ['Hombre', 'Mujer', 'Lo nuevo'] },
-  { id: 13, category: 'Zapatillas', name: 'Boss Junior Star', price: 59990, stock: 20, img: 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=600&h=600&fit=crop', specs: ['Tallas 28-35', 'Velcro fácil', 'Suela antideslizante'], tags: ['Niños'] },
-  { id: 14, category: 'Poleras', name: 'Boss Kids Tee', price: 24990, stock: 28, img: 'https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=600&h=600&fit=crop', specs: ['Algodón orgánico', 'Estampados divertidos', 'Anti-manchas'], tags: ['Niños'] },
-  { id: 15, category: 'Shorts', name: 'Boss Kids Short', price: 19990, stock: 30, img: 'https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=600&h=600&fit=crop', specs: ['Cintura elástica', 'Secado rápido', 'Colores vibrantes'], tags: ['Niños'] },
-  { id: 16, category: 'Zapatillas', name: 'Boss Trail Beast', price: 139990, stock: 7, img: 'https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&h=600&fit=crop', specs: ['Gore-Tex waterproof', 'Suela Vibram', 'Protección de roca'], tags: ['Hombre', 'Deportes'] },
+  { id: 1, category: 'Zapatillas', name: 'Boss Runner X1', price: 89990, stock: 15, img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop', specs: ['Suela de goma premium', 'Mesh transpirable', 'Amortiguación responsive'], tags: ['Hombre', 'Deportes', 'Lo nuevo'], stock_by_size: {'36':1,'37':1,'38':2,'39':2,'40':2,'41':2,'42':2,'43':1,'44':1,'45':1,'46':0} },
+  { id: 2, category: 'Zapatillas', name: 'Boss Air Force', price: 109990, stock: 12, img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&h=600&fit=crop', specs: ['Cuero sintético', 'Suela Air visible', 'Clásico reinventado'], tags: ['Hombre', 'Mujer', 'Exclusivos'], stock_by_size: {'36':1,'37':1,'38':1,'39':1,'40':1,'41':1,'42':1,'43':1,'44':1,'45':1,'46':1} },
+  { id: 3, category: 'Poleras', name: 'Boss Classic Tee', price: 34990, stock: 30, img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop', specs: ['Algodón 100%', 'Fit regular', 'Logo bordado'], tags: ['Hombre', 'Lo nuevo'], stock_by_size: {'XS':5,'S':5,'M':5,'L':5,'XL':5,'XXL':5} },
+  { id: 4, category: 'Zapatillas', name: 'Boss Retro High', price: 119990, stock: 8, img: 'https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=600&h=600&fit=crop', specs: ['Caña alta acolchada', 'Suela vulcanizada', 'Edición limitada'], tags: ['Mujer', 'Exclusivos'], stock_by_size: {'36':1,'37':1,'38':1,'39':1,'40':1,'41':1,'42':1,'43':1,'44':0,'45':0,'46':0} },
+  { id: 5, category: 'Zapatillas', name: 'Boss Speed Lite', price: 99990, stock: 20, img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop', specs: ['Ultra liviana 220g', 'Placa de carbono', 'Para competición'], tags: ['Hombre', 'Mujer', 'Deportes'], stock_by_size: {'36':2,'37':2,'38':2,'39':2,'40':2,'41':2,'42':2,'43':2,'44':1,'45':1,'46':1} },
+  { id: 6, category: 'Polerones', name: 'Boss Oversize Hoodie', price: 59990, stock: 25, img: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600&h=600&fit=crop', specs: ['Algodón fleece 350g', 'Capucha doble', 'Bolsillo canguro'], tags: ['Hombre', 'Mujer', 'Lo nuevo'], stock_by_size: {'XS':4,'S':5,'M':5,'L':4,'XL':4,'XXL':3} },
+  { id: 7, category: 'Zapatillas', name: 'Boss Dunk Low', price: 129990, stock: 6, img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=600&fit=crop', specs: ['Cuero premium', 'Colorway exclusivo', 'Edición Chile'], tags: ['Hombre', 'Mujer', 'Exclusivos', 'Lo nuevo'], stock_by_size: {'36':0,'37':1,'38':1,'39':1,'40':1,'41':1,'42':1,'43':0,'44':0,'45':0,'46':0} },
+  { id: 8, category: 'Poleras', name: 'Boss Dry-Fit Pro', price: 44990, stock: 18, img: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600&h=600&fit=crop', specs: ['Tecnología Dry-Fit', 'Anti-transpirante', 'UV Protection 50+'], tags: ['Hombre', 'Deportes'], stock_by_size: {'XS':3,'S':3,'M':3,'L':3,'XL':3,'XXL':3} },
+  { id: 9, category: 'Shorts', name: 'Boss Flex Short', price: 39990, stock: 22, img: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=600&h=600&fit=crop', specs: ['Tela stretch 4 vías', 'Bolsillos con cierre', 'Liner integrado'], tags: ['Hombre', 'Deportes'], stock_by_size: {'XS':3,'S':4,'M':4,'L':4,'XL':4,'XXL':3} },
+  { id: 10, category: 'Zapatillas', name: 'Boss Pink Cloud', price: 94990, stock: 14, img: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=600&h=600&fit=crop', specs: ['Foam ultra suave', 'Diseño femenino', 'Slip-on easy'], tags: ['Mujer', 'Lo nuevo'], stock_by_size: {'36':2,'37':2,'38':2,'39':2,'40':2,'41':2,'42':1,'43':1,'44':0,'45':0,'46':0} },
+  { id: 11, category: 'Polerones', name: 'Boss Cropped Hoodie', price: 49990, stock: 16, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&h=600&fit=crop', specs: ['Corte cropped', 'French terry', 'Colores pasteles'], tags: ['Mujer', 'Lo nuevo'], stock_by_size: {'XS':3,'S':3,'M':3,'L':3,'XL':2,'XXL':2} },
+  { id: 12, category: 'Accesorios', name: 'Boss Mochila Urban', price: 64990, stock: 10, img: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&h=600&fit=crop', specs: ['30L capacidad', 'Compartimiento laptop', 'Tela impermeable'], tags: ['Hombre', 'Mujer', 'Lo nuevo'], stock_by_size: {'UNICA':10} },
+  { id: 13, category: 'Zapatillas', name: 'Boss Junior Star', price: 59990, stock: 20, img: 'https://images.unsplash.com/photo-1514989940723-e8e51635b782?w=600&h=600&fit=crop', specs: ['Tallas 28-35', 'Velcro fácil', 'Suela antideslizante'], tags: ['Niños'], stock_by_size: {'28':2,'29':3,'30':3,'31':3,'32':3,'33':2,'34':2,'35':2} },
+  { id: 14, category: 'Poleras', name: 'Boss Kids Tee', price: 24990, stock: 28, img: 'https://images.unsplash.com/photo-1519238263530-99bdd11df2ea?w=600&h=600&fit=crop', specs: ['Algodón orgánico', 'Estampados divertidos', 'Anti-manchas'], tags: ['Niños'], stock_by_size: {'4':4,'6':5,'8':5,'10':5,'12':5,'14':4} },
+  { id: 15, category: 'Shorts', name: 'Boss Kids Short', price: 19990, stock: 30, img: 'https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=600&h=600&fit=crop', specs: ['Cintura elástica', 'Secado rápido', 'Colores vibrantes'], tags: ['Niños'], stock_by_size: {'4':5,'6':5,'8':5,'10':5,'12':5,'14':5} },
+  { id: 16, category: 'Zapatillas', name: 'Boss Trail Beast', price: 139990, stock: 7, img: 'https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&h=600&fit=crop', specs: ['Gore-Tex waterproof', 'Suela Vibram', 'Protección de roca'], tags: ['Hombre', 'Deportes'], stock_by_size: {'36':0,'37':0,'38':1,'39':1,'40':1,'41':1,'42':1,'43':1,'44':1,'45':0,'46':0} },
 ]
 
 /* ────── MAIN APP ────── */
@@ -103,7 +122,11 @@ export default function App() {
   // No fallback needed - products initialized from FALLBACK_PRODUCTS
 
   /* ── Cart helpers ── */
-  const addToCart = (product, size = 'M') => {
+  const addToCart = (product, size) => {
+    if (!size) {
+      const sizes = getSizesForProduct(product)
+      size = sizes[Math.floor(sizes.length / 2)] || sizes[0]
+    }
     setCart(prev => {
       const key = `${product.id}-${size}`
       const exists = prev.find(i => `${i.id}-${i.size}` === key)
@@ -563,11 +586,13 @@ function CatalogPage({ products, addToCart, toggleFav, favorites, selectedCatego
    PRODUCT DETAIL PAGE
    ══════════════════════════════════════════════ */
 function ProductPage({ product, addToCart, toggleFav, favorites, products, setSelectedProduct, navigate }) {
-  const [selectedSize, setSelectedSize] = useState('M')
+  const sizes = getSizesForProduct(product)
+  const [selectedSize, setSelectedSize] = useState(sizes[Math.floor(sizes.length / 2)] || sizes[0])
   const [qty, setQty] = useState(1)
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
   const isFav = favorites.includes(product.id)
   const related = products.filter(p => p.id !== product.id && (p.category === product.category || p.tags?.some(t => product.tags?.includes(t)))).slice(0, 4)
+  const sizeStock = getSizeStock(product, selectedSize)
+  const isShoe = product.category === 'Zapatillas'
 
   return (
     <div className="px-4 md:px-10 py-8">
@@ -588,28 +613,40 @@ function ProductPage({ product, addToCart, toggleFav, favorites, products, setSe
           <p className="text-2xl font-medium mb-4">{fmt(product.price)}</p>
 
           {/* Stock */}
-          {product.stock > 0 ? (
+          {sizeStock > 0 ? (
             <p className="text-sm text-green-600 flex items-center gap-1 mb-6">
-              <Check size={14} /> {product.stock > 10 ? 'En stock' : `Solo quedan ${product.stock} unidades`}
+              <Check size={14} /> {sizeStock > 10 ? 'En stock' : `Solo quedan ${sizeStock} unidades en talla ${selectedSize}`}
             </p>
           ) : (
             <p className="text-sm text-red-500 flex items-center gap-1 mb-6">
-              <XCircle size={14} /> Agotado
+              <XCircle size={14} /> Agotado en talla {selectedSize}
             </p>
           )}
 
           {/* Sizes */}
-          <div className="mb-6">
-            <p className="text-sm font-medium mb-2">Talla</p>
-            <div className="flex gap-2 flex-wrap">
-              {sizes.map(s => (
-                <button key={s} onClick={() => setSelectedSize(s)}
-                  className={`w-12 h-12 rounded-lg border text-sm font-medium cursor-pointer transition ${
-                    selectedSize === s ? 'border-black bg-black text-white' : 'border-gray-300 hover:border-black'
-                  }`}>{s}</button>
-              ))}
+          {product.category !== 'Accesorios' && (
+            <div className="mb-6">
+              <p className="text-sm font-medium mb-2">{isShoe ? 'Talla (CL)' : 'Talla'}</p>
+              <div className="flex gap-2 flex-wrap">
+                {sizes.map(s => {
+                  const sStock = getSizeStock(product, s)
+                  return (
+                    <button key={s} onClick={() => { setSelectedSize(s); setQty(1) }}
+                      disabled={sStock === 0}
+                      className={`${isShoe ? 'w-14' : 'w-12'} h-12 rounded-lg border text-sm font-medium cursor-pointer transition relative ${
+                        selectedSize === s ? 'border-black bg-black text-white' : sStock === 0 ? 'border-gray-200 text-gray-300 cursor-not-allowed line-through' : 'border-gray-300 hover:border-black'
+                      }`}>
+                      {s}
+                      {sStock > 0 && sStock <= 3 && selectedSize !== s && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full"></span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              {isShoe && <p className="text-xs text-gray-400 mt-2">Tallas en formato chileno (CL)</p>}
             </div>
-          </div>
+          )}
 
           {/* Quantity */}
           <div className="mb-6">
@@ -617,14 +654,14 @@ function ProductPage({ product, addToCart, toggleFav, favorites, products, setSe
             <div className="flex items-center border border-gray-300 rounded-lg w-fit">
               <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 py-2 cursor-pointer"><Minus size={16} /></button>
               <span className="px-4 py-2 text-sm font-medium">{qty}</span>
-              <button onClick={() => setQty(Math.min(product.stock, qty + 1))} className="px-3 py-2 cursor-pointer"><Plus size={16} /></button>
+              <button onClick={() => setQty(Math.min(sizeStock, qty + 1))} className="px-3 py-2 cursor-pointer"><Plus size={16} /></button>
             </div>
           </div>
 
           {/* Buttons */}
           <div className="flex gap-3 mb-8">
             <button onClick={() => { for (let i = 0; i < qty; i++) addToCart(product, selectedSize) }}
-              disabled={product.stock === 0}
+              disabled={sizeStock === 0}
               className="flex-1 bg-black text-white py-3.5 rounded-full font-medium hover:bg-gray-800 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
               Agregar al carro
             </button>
@@ -1283,7 +1320,8 @@ function AdminPanel() {
   const [tab, setTab] = useState('inventory')
   const [products, setProducts] = useState([])
   const [orders, setOrders] = useState([])
-  const [editingStock, setEditingStock] = useState({})
+  const [expandedProduct, setExpandedProduct] = useState(null)
+  const [editingSizes, setEditingSizes] = useState({})
 
   const login = async () => {
     try {
@@ -1314,13 +1352,27 @@ function AdminPanel() {
 
   useEffect(() => { if (token) loadData() }, [token])
 
-  const updateStock = async (id, stock) => {
-    await fetch(`${API_BASE_URL}/admin/products/${id}/stock`, {
+  const saveStockBySizes = async (id) => {
+    const stockMap = editingSizes[id]
+    if (!stockMap) return
+    const cleaned = {}
+    Object.entries(stockMap).forEach(([k, v]) => { cleaned[k] = parseInt(v) || 0 })
+    await fetch(`${API_BASE_URL}/admin/products/${id}/stock-by-size`, {
       method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stock: parseInt(stock) })
+      body: JSON.stringify({ stock_by_size: cleaned })
     })
     loadData()
-    setEditingStock(prev => { const n = { ...prev }; delete n[id]; return n })
+    setEditingSizes(prev => { const n = { ...prev }; delete n[id]; return n })
+    setExpandedProduct(null)
+  }
+
+  const startEditing = (p) => {
+    const sizes = getSizesForProduct(p)
+    const current = p.stock_by_size || {}
+    const map = {}
+    sizes.forEach(s => { map[s] = current[s] !== undefined ? current[s] : 0 })
+    setEditingSizes(prev => ({ ...prev, [p.id]: map }))
+    setExpandedProduct(p.id)
   }
 
   if (!token) return (
@@ -1355,41 +1407,92 @@ function AdminPanel() {
       </div>
 
       {tab === 'inventory' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b text-left text-gray-500">
-              <th className="pb-3">Producto</th><th className="pb-3">Categoría</th><th className="pb-3">Precio</th><th className="pb-3">Stock</th><th className="pb-3">Acciones</th>
-            </tr></thead>
-            <tbody>
-              {products.map(p => (
-                <tr key={p.id} className="border-b">
-                  <td className="py-3 flex items-center gap-3">
-                    <img src={p.img} className="w-10 h-10 rounded object-cover" alt="" />
-                    {p.name}
-                  </td>
-                  <td className="py-3">{p.category}</td>
-                  <td className="py-3">{fmt(p.price)}</td>
-                  <td className="py-3">
-                    {editingStock[p.id] !== undefined ? (
-                      <input type="number" value={editingStock[p.id]} onChange={e => setEditingStock({ ...editingStock, [p.id]: e.target.value })}
-                        className="w-20 border rounded px-2 py-1 text-sm" />
-                    ) : (
-                      <span className={p.stock < 5 ? 'text-red-500 font-medium' : ''}>{p.stock}</span>
+        <div className="space-y-3">
+          {products.map(p => {
+            const sizes = getSizesForProduct(p)
+            const isExpanded = expandedProduct === p.id
+            const isEditing = editingSizes[p.id] !== undefined
+            const totalStock = p.stock
+            const isShoe = p.category === 'Zapatillas'
+
+            return (
+              <div key={p.id} className="border rounded-xl overflow-hidden">
+                {/* Product row */}
+                <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50"
+                  onClick={() => isExpanded ? setExpandedProduct(null) : setExpandedProduct(p.id)}>
+                  <img src={p.img} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" alt="" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{p.name}</p>
+                    <p className="text-xs text-gray-500">{p.category} · {fmt(p.price)}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-sm font-bold ${totalStock < 5 ? 'text-red-500' : totalStock < 15 ? 'text-orange-500' : 'text-green-600'}`}>
+                      {totalStock} uds
+                    </p>
+                    <p className="text-[10px] text-gray-400">{isShoe ? 'Tallas zapato' : p.category === 'Accesorios' ? 'Talla única' : 'Tallas ropa'}</p>
+                  </div>
+                  <ChevronDown size={18} className={`text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* Expanded: stock by size */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50 p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock por talla</p>
+                      {!isEditing ? (
+                        <button onClick={(e) => { e.stopPropagation(); startEditing(p) }}
+                          className="text-xs bg-black text-white px-3 py-1 rounded-full cursor-pointer hover:bg-gray-800 flex items-center gap-1">
+                          <Edit3 size={12} /> Editar
+                        </button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button onClick={(e) => { e.stopPropagation(); setEditingSizes(prev => { const n = { ...prev }; delete n[p.id]; return n }) }}
+                            className="text-xs border px-3 py-1 rounded-full cursor-pointer hover:bg-white">
+                            Cancelar
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); saveStockBySizes(p.id) }}
+                            className="text-xs bg-green-600 text-white px-3 py-1 rounded-full cursor-pointer hover:bg-green-700 flex items-center gap-1">
+                            <Save size={12} /> Guardar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-11 gap-2">
+                      {sizes.map(s => {
+                        const sStock = isEditing ? (editingSizes[p.id]?.[s] ?? 0) : (p.stock_by_size?.[s] ?? 0)
+                        return (
+                          <div key={s} className={`rounded-lg border text-center p-2 ${
+                            isEditing ? 'bg-white border-gray-300' : sStock === 0 ? 'bg-red-50 border-red-200' : sStock <= 3 ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-200'
+                          }`}>
+                            <p className="text-[11px] font-bold text-gray-500 mb-1">{s}</p>
+                            {isEditing ? (
+                              <input type="number" min="0"
+                                value={editingSizes[p.id]?.[s] ?? 0}
+                                onChange={e => setEditingSizes(prev => ({
+                                  ...prev, [p.id]: { ...prev[p.id], [s]: e.target.value }
+                                }))}
+                                onClick={e => e.stopPropagation()}
+                                className="w-full text-center text-sm font-medium border rounded px-1 py-0.5 outline-none focus:border-black"
+                              />
+                            ) : (
+                              <p className={`text-sm font-bold ${sStock === 0 ? 'text-red-400' : sStock <= 3 ? 'text-orange-500' : 'text-gray-800'}`}>
+                                {sStock}
+                              </p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {isEditing && (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Total: {Object.values(editingSizes[p.id] || {}).reduce((s, v) => s + (parseInt(v) || 0), 0)} unidades
+                      </p>
                     )}
-                  </td>
-                  <td className="py-3">
-                    {editingStock[p.id] !== undefined ? (
-                      <button onClick={() => updateStock(p.id, editingStock[p.id])}
-                        className="text-green-600 hover:text-green-800 cursor-pointer"><Save size={16} /></button>
-                    ) : (
-                      <button onClick={() => setEditingStock({ ...editingStock, [p.id]: p.stock })}
-                        className="text-gray-500 hover:text-black cursor-pointer"><Edit3 size={16} /></button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -1398,19 +1501,32 @@ function AdminPanel() {
           {orders.length === 0 ? (
             <p className="text-center text-gray-500 py-10">No hay órdenes aún</p>
           ) : orders.map(o => (
-            <div key={o.id} className="border rounded-xl p-4 flex justify-between items-center">
-              <div>
-                <p className="font-mono text-sm font-medium">{o.id}</p>
-                <p className="text-xs text-gray-500">{o.customer_email} · {new Date(o.created_at).toLocaleDateString('es-CL')}</p>
+            <div key={o.id} className="border rounded-xl p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-mono text-sm font-medium">{o.id}</p>
+                  <p className="text-xs text-gray-500">{o.customer_email} · {new Date(o.created_at).toLocaleDateString('es-CL')}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{fmt(o.total)}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    o.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                    o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>{o.status}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-medium">{fmt(o.total)}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  o.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                  o.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                }`}>{o.status}</span>
-              </div>
+              {/* Order items with sizes */}
+              {o.items && o.items.length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  {o.items.map((item, i) => (
+                    <div key={i} className="flex justify-between text-xs text-gray-500 py-0.5">
+                      <span>{item.name} <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-medium">Talla {item.size}</span> x{item.qty}</span>
+                      <span>{fmt(item.price * item.qty)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

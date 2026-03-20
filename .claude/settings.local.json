@@ -9,7 +9,23 @@
       "Bash(pip install:*)",
       "Bash(python -c \"from db import init_db; init_db\\(\\); print\\(''DB OK''\\)\")",
       "Bash(curl -s http://localhost:8001/products)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "Bash(gh api:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f''''{len\\(d\\)} products loaded''''\\)\")",
+      "Bash(curl -s -X POST http://localhost:8001/create-preference -H \"Content-Type: application/json\" -d '{\"\"items\"\":[{\"\"id\"\":1,\"\"name\"\":\"\"Boss Runner X1\"\",\"\"qty\"\":1,\"\"size\"\":\"\"M\"\"}],\"\"customer_email\"\":\"\"test@test.com\"\",\"\"delivery_method\"\":\"\"shipping\"\",\"\"shipping_address\"\":\"\"Test 123, Santiago\"\"}')",
+      "Bash(python -c \":*)",
+      "Bash(curl -s -X POST http://localhost:8001/create-preference -H \"Content-Type: application/json\" -d '{\"\"items\"\":[{\"\"id\"\":1,\"\"name\"\":\"\"Boss Runner X1\"\",\"\"qty\"\":1,\"\"size\"\":\"\"M\"\"}],\"\"customer_email\"\":\"\"test@test.com\"\",\"\"delivery_method\"\":\"\"shipping\"\",\"\"shipping_address\"\":\"\"Test 123\"\"}')",
+      "Bash(python -c \"from dotenv import load_dotenv; import os; load_dotenv\\(\\); print\\(''FRONTEND_URL:'', os.getenv\\(''FRONTEND_URL''\\)\\)\")",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(npm run:*)",
+      "Bash(start http://localhost:5174)",
+      "Bash(start \"https://render.com/deploy?repo=https://github.com/ccasadoz/alvaro-big-boss\")"
     ]
   }
 }
